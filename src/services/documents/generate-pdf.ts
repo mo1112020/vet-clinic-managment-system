@@ -16,7 +16,7 @@ export async function generateAnimalRecordPdf(data: PdfGenerationData): Promise<
   const { animal, owner, vaccinations, medicalRecords, title } = data;
   
   // Create a new PDF document
-  const doc = new jsPDF();
+  const doc = new jsPDF() as jsPDF & { lastAutoTable?: { finalY: number } };
   
   // Add title
   const pdfTitle = title || `Medical Record - ${animal.name}`;
@@ -51,7 +51,7 @@ export async function generateAnimalRecordPdf(data: PdfGenerationData): Promise<
   });
   
   // Add owner information
-  const finalY = (doc as any).lastAutoTable.finalY + 10;
+  const finalY = doc.lastAutoTable.finalY + 10;
   doc.setFontSize(16);
   doc.text('Owner Information', 14, finalY);
   
@@ -74,7 +74,7 @@ export async function generateAnimalRecordPdf(data: PdfGenerationData): Promise<
   });
   
   // Add vaccination records
-  const ownerFinalY = (doc as any).lastAutoTable.finalY + 10;
+  const ownerFinalY = doc.lastAutoTable.finalY + 10;
   doc.setFontSize(16);
   doc.text('Vaccination Records', 14, ownerFinalY);
   
@@ -100,7 +100,7 @@ export async function generateAnimalRecordPdf(data: PdfGenerationData): Promise<
   }
   
   // Add medical history
-  const vaccinationFinalY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 10 : ownerFinalY + 15;
+  const vaccinationFinalY = vaccinations.length > 0 ? doc.lastAutoTable.finalY + 10 : ownerFinalY + 15;
   doc.setFontSize(16);
   doc.text('Medical History', 14, vaccinationFinalY);
   

@@ -1,5 +1,6 @@
+import { Tables } from '@/integrations/supabase/types';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { InventoryItem } from '@/types/database.types';
 import { useToast } from '@/hooks/use-toast';
@@ -14,14 +15,18 @@ export function useInventory(
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState({
-    totalItems: 0,
-    lowStockItems: 0,
-    totalValue: 0
-  });
+  const request = useRef<AbortController | null>(null);
+  const stats = useMemo(() => ({
+    totalItems: inventoryItems.reduce((sum, item) => sum + item.stock, 0),
+    lowStockItems: inventoryItems.filter(item => item.stock < item.reorder_level).length,
+    totalValue: inventoryItems.reduce((sum, item) => sum + item.stock * item.price, 0),
+  }), [inventoryItems]);
   const { toast } = useToast();
 
   const fetchInventory = useCallback(async () => {
+    request.current?.abort();
+    const controller = new AbortController();
+    request.current = controller;
     setIsLoading(true);
     setError(null);
 
@@ -45,14 +50,16 @@ export function useInventory(
         const sortFieldMap: Record<string, string> = {
           'name': 'product_name',
           'stock': 'quantity',
-          'price': 'price'
+          'price': 'price',
+          'sold': 'product_name' // Sold is a derived zero, not a database column.
         };
         
         const dbSortField = sortFieldMap[sortBy] || sortBy;
         query = query.order(dbSortField, { ascending: sortDirection === 'asc' });
       }
 
-      const { data, error } = await query;
+      const { data, error } = await query.abortSignal(controller.signal);
+      if (controller.signal.aborted) return;
 
       if (error) {
         console.error('Supabase error:', error);
@@ -72,17 +79,8 @@ export function useInventory(
 
       setInventoryItems(mappedItems);
 
-      // Calculate stats
-      const totalItems = mappedItems.reduce((sum, item) => sum + item.stock, 0);
-      const lowStockItems = mappedItems.filter(item => item.stock < item.reorder_level).length;
-      const totalValue = mappedItems.reduce((sum, item) => sum + (item.stock * item.price), 0);
-
-      setStats({
-        totalItems,
-        lowStockItems,
-        totalValue
-      });
     } catch (err) {
+      if (controller.signal.aborted) return;
       console.error('Error fetching inventory:', err);
       setError('Failed to load inventory');
       toast({
@@ -91,12 +89,12 @@ export function useInventory(
         variant: 'destructive',
       });
     } finally {
-      setIsLoading(false);
+      if (!controller.signal.aborted) setIsLoading(false);
     }
-  }, [searchQuery, categoryFilter, stockFilter, sortBy, sortDirection, toast]);
+  }, [searchQuery, stockFilter, sortBy, sortDirection, toast]);
 
   // Function to add a new item to the local state
-  const addItem = (newItem: any) => {
+  const addItem = (newItem: Tables<'inventory'>) => {
     const mappedItem: InventoryItem = {
       id: newItem.id,
       name: newItem.product_name,
@@ -109,16 +107,10 @@ export function useInventory(
     
     setInventoryItems(prev => [mappedItem, ...prev]);
     
-    // Update stats
-    setStats(prev => ({
-      totalItems: prev.totalItems + mappedItem.stock,
-      lowStockItems: prev.lowStockItems + (mappedItem.stock < mappedItem.reorder_level ? 1 : 0),
-      totalValue: prev.totalValue + (mappedItem.stock * mappedItem.price)
-    }));
   };
 
   // Function to update an existing item in the local state
-  const updateItem = (updatedItem: any) => {
+  const updateItem = (updatedItem: Tables<'inventory'>) => {
     setInventoryItems(prev => {
       const newItems = prev.map(item => {
         if (item.id === updatedItem.id) {
@@ -132,23 +124,13 @@ export function useInventory(
         return item;
       });
       
-      // Recalculate stats with new items
-      const totalItems = newItems.reduce((sum, item) => sum + item.stock, 0);
-      const lowStockItems = newItems.filter(item => item.stock < item.reorder_level).length;
-      const totalValue = newItems.reduce((sum, item) => sum + (item.stock * item.price), 0);
-      
-      setStats({
-        totalItems,
-        lowStockItems,
-        totalValue
-      });
-      
       return newItems;
     });
   };
 
   useEffect(() => {
     fetchInventory();
+    return () => request.current?.abort();
   }, [fetchInventory]);
 
   return { 

@@ -1,6 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
 
 export async function deleteAnimal(id: string): Promise<{ success: boolean }> {
   try {
@@ -22,9 +21,7 @@ export async function deleteAnimal(id: string): Promise<{ success: boolean }> {
       .delete()
       .eq('animal_id', id);
 
-    if (vaccinationsError) {
-      console.error('Error deleting vaccinations:', vaccinationsError.message);
-    }
+    if (vaccinationsError) throw vaccinationsError;
 
     // Then delete any related records in medical_records table
     const { error: medicalRecordsError } = await supabase
@@ -32,9 +29,7 @@ export async function deleteAnimal(id: string): Promise<{ success: boolean }> {
       .delete()
       .eq('animal_id', id);
 
-    if (medicalRecordsError) {
-      console.error('Error deleting medical records:', medicalRecordsError.message);
-    }
+    if (medicalRecordsError) throw medicalRecordsError;
 
     // Then delete any related records in medical_files table
     const { error: medicalFilesError } = await supabase
@@ -42,15 +37,13 @@ export async function deleteAnimal(id: string): Promise<{ success: boolean }> {
       .delete()
       .eq('animal_id', id);
 
-    if (medicalFilesError) {
-      console.error('Error deleting medical files:', medicalFilesError.message);
-    }
+    if (medicalFilesError) throw medicalFilesError;
 
     // Finally delete the animal record
     const { error: animalError } = await supabase
       .from('animals')
       .delete()
-      .eq('id', id);
+      .eq('id', id).select('id').single();
 
     if (animalError) {
       throw new Error(`Error deleting animal: ${animalError.message}`);

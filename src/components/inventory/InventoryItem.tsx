@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Syringe, Pill, Scissors, ShoppingBag, Package, Pencil } from 'lucide-react';
@@ -36,24 +35,9 @@ export function InventoryItemCard({ item, index, onEditItem }: InventoryItemProp
 
   const stockStatus = getStockStatus(item.stock, item.reorder_level);
   
-  const cardVariants = {
-    initial: { opacity: 0, y: 20 },
-    animate: (index: number) => ({
-      opacity: 1,
-      y: 0,
-      transition: {
-        delay: index * 0.05,
-        duration: 0.3,
-      },
-    }),
-  };
 
   return (
-    <motion.div
-      variants={cardVariants}
-      initial="initial"
-      animate="animate"
-      custom={index}
+    <div
     >
       <div className="flex flex-col md:flex-row md:items-center p-4 border rounded-lg hover:bg-muted/30 transition-colors">
         {/* Mobile View */}
@@ -114,6 +98,6 @@ export function InventoryItemCard({ item, index, onEditItem }: InventoryItemProp
           </Button>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

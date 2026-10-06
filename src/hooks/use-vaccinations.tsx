@@ -1,200 +1,42 @@
-
 import { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Vaccination } from '@/types/database.types';
 import { useToast } from '@/hooks/use-toast';
-import { format, isPast, isToday, addDays, isAfter } from 'date-fns';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { format, addDays } from 'date-fns';
+import { getVaccinations, VaccinationFilter } from '@/services/vaccinations/get-vaccinations';
 
-export function useVaccinations(filter: 'today' | 'upcoming' | 'overdue' | 'all' = 'all') {
-  const [vaccinations, setVaccinations] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [sendingReminders, setSendingReminders] = useState<number[]>([]);
-  const [completingVaccinations, setCompletingVaccinations] = useState<number[]>([]);
+export function useVaccinations(filter: VaccinationFilter = 'all') {
+  const [sendingReminders, setSendingReminders] = useState<string[]>([]);
+  const [completingVaccinations, setCompletingVaccinations] = useState<string[]>([]);
   const { toast } = useToast();
-  const { language } = useLanguage();
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: ['vaccinations', filter],
+    queryFn: ({ signal }) => getVaccinations(filter, signal),
+  });
+  const vaccinations = query.data ?? [];
 
   useEffect(() => {
-    const fetchVaccinations = async () => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        // Join vaccinations with animals and owners to get complete data
-        let query = supabase
-          .from('vaccinations')
-          .select(`
-            *,
-            animals (
-              id,
-              name,
-              animal_type,
-              owners (
-                full_name,
-                phone_number
-              )
-            )
-          `);
-
-        // Apply filter based on date
-        const today = format(new Date(), 'yyyy-MM-dd');
-        
-        if (filter === 'today') {
-          query = query.eq('scheduled_date', today);
-        } else if (filter === 'upcoming') {
-          query = query.gt('scheduled_date', today).lt('scheduled_date', format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
-        } else if (filter === 'overdue') {
-          query = query.lt('scheduled_date', today);
-        }
-
-        // Only show non-completed vaccinations by default, except for 'all' filter
-        if (filter !== 'all') {
-          query = query.eq('completed', false);
-        }
-        
-        const { data, error } = await query;
-
-        if (error) throw error;
-
-        // Transform data to include animal type and owner information
-        const formattedData = data.map(item => ({
-          id: item.id,
-          animalName: item.animals.name,
-          animalType: item.animals.animal_type,
-          ownerName: item.animals.owners.full_name,
-          ownerPhone: item.animals.owners.phone_number,
-          vaccineName: item.vaccine_name,
-          date: item.scheduled_date,
-          nextDue: item.scheduled_date, // Using the same date for demo
-          status: getReminderStatus(item.scheduled_date),
-          completed: item.completed
-        }));
-
-        setVaccinations(formattedData);
-      } catch (err) {
-        console.error('Error fetching vaccinations:', err);
-        setError('Failed to load vaccination reminders');
-        toast({
-          title: 'Error',
-          description: 'Failed to load vaccination reminders. Please try again.',
-          variant: 'destructive',
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchVaccinations();
-    
-    // Set up a timer to auto-clean missed vaccinations
-    const cleanupInterval = setInterval(() => {
-      cleanupMissedVaccinations();
-    }, 86400000); // Run once a day
-    
-    return () => {
-      clearInterval(cleanupInterval);
-    };
-  }, [filter, toast]);
-  
-  // Function to clean up missed vaccinations
-  const cleanupMissedVaccinations = async () => {
-    try {
-      const twoDaysAgo = format(addDays(new Date(), -2), 'yyyy-MM-dd');
-      
-      const { error } = await supabase
-        .from('vaccinations')
-        .delete()
-        .lt('scheduled_date', twoDaysAgo)
+    // Preserve the existing daily cleanup, without recreating it for each filter.
+    const interval = setInterval(async () => {
+      const { error } = await supabase.from('vaccinations').delete()
+        .lt('scheduled_date', format(addDays(new Date(), -2), 'yyyy-MM-dd'))
         .eq('completed', false);
-      
-      if (error) throw error;
-      
-      // Refresh vaccinations after cleanup
-      fetchVaccinations();
-      
-    } catch (err) {
-      console.error('Error cleaning up missed vaccinations:', err);
-    }
-  };
-  
-  // Function to fetch vaccinations (for refreshing data)
-  const fetchVaccinations = async () => {
-    try {
-      setIsLoading(true);
-      
-      let query = supabase
-        .from('vaccinations')
-        .select(`
-          *,
-          animals (
-            id,
-            name,
-            animal_type,
-            owners (
-              full_name,
-              phone_number
-            )
-          )
-        `);
-
-      const today = format(new Date(), 'yyyy-MM-dd');
-      
-      if (filter === 'today') {
-        query = query.eq('scheduled_date', today);
-      } else if (filter === 'upcoming') {
-        query = query.gt('scheduled_date', today).lt('scheduled_date', format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
-      } else if (filter === 'overdue') {
-        query = query.lt('scheduled_date', today);
-      }
-
-      if (filter !== 'all') {
-        query = query.eq('completed', false);
-      }
-      
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      // Transform data to include animal type and owner information
-      const formattedData = data.map(item => ({
-        id: item.id,
-        animalName: item.animals.name,
-        animalType: item.animals.animal_type,
-        ownerName: item.animals.owners.full_name,
-        ownerPhone: item.animals.owners.phone_number,
-        vaccineName: item.vaccine_name,
-        date: item.scheduled_date,
-        nextDue: item.scheduled_date,
-        status: getReminderStatus(item.scheduled_date),
-        completed: item.completed
-      }));
-
-      setVaccinations(formattedData);
-    } catch (err) {
-      console.error('Error refreshing vaccinations:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const getReminderStatus = (dateStr: string) => {
-    const date = new Date(dateStr);
-    
-    if (isToday(date)) return 'today';
-    if (isPast(date)) return 'overdue';
-    return 'upcoming';
-  };
+      if (error) console.error('Error cleaning up missed vaccinations:', error);
+      else await queryClient.invalidateQueries({ queryKey: ['vaccinations'] });
+    }, 86_400_000);
+    return () => clearInterval(interval);
+  }, [queryClient]);
 
   // Function to mark a vaccination as completed
-  const markCompleted = async (id: number) => {
+  const markCompleted = async (id: string) => {
     setCompletingVaccinations(prev => [...prev, id]);
     
     try {
       const { error } = await supabase
         .from('vaccinations')
         .update({ completed: true })
-        .eq('id', id.toString()); // Convert number to string here
+        .eq('id', id).select('id').single();
       
       if (error) throw error;
       
@@ -204,7 +46,10 @@ export function useVaccinations(filter: 'today' | 'upcoming' | 'overdue' | 'all'
       });
       
       // Refresh data
-      await fetchVaccinations();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['vaccinations'] }),
+        queryClient.invalidateQueries({ queryKey: ['animal-details'] }),
+      ]);
       
     } catch (err) {
       console.error('Error marking vaccination as completed:', err);
@@ -218,7 +63,7 @@ export function useVaccinations(filter: 'today' | 'upcoming' | 'overdue' | 'all'
     }
   };
 
-  const sendReminder = async (id: number) => {
+  const sendReminder = async (id: string) => {
     setSendingReminders(prev => [...prev, id]);
     
     try {
@@ -264,13 +109,13 @@ export function useVaccinations(filter: 'today' | 'upcoming' | 'overdue' | 'all'
   };
 
   return { 
-    vaccinations, 
-    isLoading, 
-    error, 
+    vaccinations,
+    isLoading: query.isFetching,
+    error: query.error ? 'Failed to load vaccination reminders' : null,
     sendingReminders, 
     sendReminder,
     markCompleted,
     completingVaccinations,
-    refreshVaccinations: fetchVaccinations
+    refreshVaccinations: query.refetch
   };
 }

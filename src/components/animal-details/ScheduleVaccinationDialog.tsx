@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { scheduleVaccination } from '@/services/vaccinations/schedule-vaccination';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { format } from 'date-fns';
+import { format, startOfDay } from 'date-fns';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 
@@ -28,6 +29,7 @@ export function ScheduleVaccinationDialog({
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const handleSchedule = async (e?: React.MouseEvent) => {
     
@@ -52,6 +54,7 @@ export function ScheduleVaccinationDialog({
         vaccineName,
         scheduledDate,
       });
+      await queryClient.invalidateQueries({ queryKey: ['vaccinations'] });
       
       toast({
         title: 'Vaccination scheduled',
@@ -125,9 +128,13 @@ export function ScheduleVaccinationDialog({
               <PopoverContent className="w-auto p-0" align="start">
                 <CalendarComponent
                   mode="single"
+                  captionLayout="dropdown-buttons"
+                  fromYear={new Date().getFullYear()}
+                  toYear={new Date().getFullYear() + 20}
+                  defaultMonth={scheduledDate}
                   selected={scheduledDate}
                   onSelect={setScheduledDate}
-                  disabled={(date) => date < new Date()}
+                  disabled={{ before: startOfDay(new Date()) }}
                   initialFocus
                   className={cn("p-3 pointer-events-auto")}
                 />

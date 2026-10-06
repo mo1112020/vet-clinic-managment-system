@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
@@ -10,32 +10,27 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => localStorage.getItem('isAuthenticated') === 'true');
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Check if user is authenticated on component mount
-    const auth = localStorage.getItem('isAuthenticated');
-    setIsAuthenticated(auth === 'true');
-  }, []);
-
-  const login = (username: string, password: string): boolean => {
+  const login = useCallback((username: string, password: string): boolean => {
     if (username === 'admin' && password === 'canki123') {
       localStorage.setItem('isAuthenticated', 'true');
       setIsAuthenticated(true);
       return true;
     }
     return false;
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('isAuthenticated');
     setIsAuthenticated(false);
     navigate('/login');
-  };
+  }, [navigate]);
+  const value = useMemo(() => ({ isAuthenticated, login, logout }), [isAuthenticated, login, logout]);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

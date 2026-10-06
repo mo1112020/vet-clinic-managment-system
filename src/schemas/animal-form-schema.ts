@@ -5,14 +5,7 @@ import { AnimalType } from '@/types/database.types';
 // Animal form schema
 export const animalFormSchema = z.object({
   animalType: z.enum(['cat', 'dog', 'bird', 'other'] as const),
-  customAnimalType: z.string().optional()
-    .refine(val => {
-      // Only validate if animalType is 'other'
-      if (val === '') {
-        return true;
-      }
-      return true;
-    }),
+  customAnimalType: z.string().optional(),
   name: z.string().min(2, 'Name must be at least 2 characters'),
   breed: z.string().min(2, 'Breed must be at least 2 characters'),
   chipNumber: z.string().optional(),

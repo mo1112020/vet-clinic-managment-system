@@ -41,8 +41,8 @@ export async function updateAnimal(id: string, data: AnimalFormData): Promise<An
         chip_number: data.chipNumber || null,
         prone_diseases: proneDiseasesArray,
         owner_id: ownerId,
-        age_years: data.ageYears || null,
-        age_months: data.ageMonths || null,
+        age_years: data.ageYears ?? null,
+        age_months: data.ageMonths ?? null,
       })
       .eq('id', id)
       .select()
@@ -69,8 +69,8 @@ export async function updateAnimal(id: string, data: AnimalFormData): Promise<An
       customAnimalType: animalData.custom_animal_type || undefined,
       breed: animalData.breed || '',
       chipNo: animalData.chip_number || undefined,
-      ageYears: animalData.age_years || undefined,
-      ageMonths: animalData.age_months || undefined,
+      ageYears: animalData.age_years ?? undefined,
+      ageMonths: animalData.age_months ?? undefined,
       healthNotes: animalData.prone_diseases ? animalData.prone_diseases.join(', ') : undefined,
       owner_id: animalData.owner_id,
       created_at: animalData.created_at,

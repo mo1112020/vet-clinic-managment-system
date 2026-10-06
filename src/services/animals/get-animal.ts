@@ -1,16 +1,23 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { Animal } from '@/types/database.types';
+import { Tables } from '@/integrations/supabase/types';
 
-export async function getAnimalById(id: string): Promise<any> {
-  const { data, error } = await supabase
+type AnimalDetailsRow = Tables<'animals'> & {
+  owners: Tables<'owners'> | null;
+  last_visit?: string;
+  next_appointment?: string;
+};
+
+export async function getAnimalById(id: string, signal?: AbortSignal) {
+  let query = supabase
     .from('animals')
     .select(`
       *,
       owners(*)
     `)
-    .eq('id', id)
-    .single();
+    .eq('id', id);
+  if (signal) query = query.abortSignal(signal);
+  const { data, error } = await query.single();
 
   if (error) {
     console.error('Error fetching animal:', error);
@@ -18,9 +25,9 @@ export async function getAnimalById(id: string): Promise<any> {
   }
 
   return {
-    ...data,
+    ...(data as AnimalDetailsRow),
     owner: data.owners,
-    age_years: data.age_years || undefined,
-    age_months: data.age_months || undefined,
+    age_years: data.age_years ?? undefined,
+    age_months: data.age_months ?? undefined,
   };
 }

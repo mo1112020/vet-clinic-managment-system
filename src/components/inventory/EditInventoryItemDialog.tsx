@@ -1,3 +1,4 @@
+import { Tables } from '@/integrations/supabase/types';
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -14,7 +15,7 @@ type EditInventoryItemDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item: InventoryItem | null;
-  onItemUpdated?: (item: any) => void;
+  onItemUpdated?: (item: Tables<'inventory'>) => void;
 };
 
 export function EditInventoryItemDialog({ open, onOpenChange, item, onItemUpdated }: EditInventoryItemDialogProps) {
@@ -112,7 +113,7 @@ export function EditInventoryItemDialog({ open, onOpenChange, item, onItemUpdate
             <Label>Category</Label>
             <Select
               value={editedItem.category}
-              onValueChange={(value: any) => setEditedItem({...editedItem, category: value})}
+              onValueChange={(value: InventoryItem['category']) => setEditedItem({...editedItem, category: value})}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select category" />

@@ -1,3 +1,4 @@
+import { AnimalFormValues } from '@/schemas/animal-form-schema';
 
 import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -18,7 +19,7 @@ const AnimalForm = () => {
   const { t } = useLanguage();
 
   // Form submission handler
-  const handleFormSubmit = async (data: any) => {
+  const handleFormSubmit = async (data: AnimalFormValues) => {
     try {
       // Call the submission handler from the hook
       await onSubmit(data);

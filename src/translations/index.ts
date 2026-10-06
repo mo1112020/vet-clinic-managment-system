@@ -17,6 +17,7 @@ export const translations: TranslationsType = {
   dogs: { en: 'Dogs', tr: 'Köpekler' },
   cats: { en: 'Cats', tr: 'Kediler' },
   birds: { en: 'Birds', tr: 'Kuşlar' },
+  completed: { en: 'Completed', tr: 'Tamamlanan' },
   vaccinations: { en: 'Vaccinations', tr: 'Aşılar' },
   inventory: { en: 'Inventory', tr: 'Envanter' },
   records: { en: 'Records', tr: 'Kayıtlar' },

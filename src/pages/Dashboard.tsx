@@ -1,39 +1,17 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Dog, Cat, Bird, ShoppingCart, Activity, Clock, Loader2 } from 'lucide-react';
+import { Calendar, Dog, Cat, Bird, ShoppingCart, Activity, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { motion } from 'framer-motion';
 import { useDashboardStats } from '@/hooks/use-dashboard-stats';
 import { format } from 'date-fns';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const Dashboard = () => {
-  const { data: stats, isLoading, error } = useDashboardStats();
+  const { data: stats, error } = useDashboardStats();
   const { t } = useLanguage();
   
-  const cardVariants = {
-    initial: { opacity: 0, y: 20 },
-    animate: (index: number) => ({
-      opacity: 1,
-      y: 0,
-      transition: {
-        delay: index * 0.1,
-        duration: 0.5,
-      },
-    }),
-  };
-
-  // If data is loading, show a loading state
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96">
-        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-        <p className="text-muted-foreground">{t('loadingDashboard')}</p>
-      </div>
-    );
-  }
 
   // If there was an error, show an error state
   if (error) {
@@ -48,10 +26,10 @@ const Dashboard = () => {
   }
 
   const statCards = [
-    { title: t('totalPatients'), value: stats?.totalPatients.toString() || "0", icon: Activity, color: "bg-blue-500", link: "/animals/search" },
-    { title: t('dogs'), value: stats?.dogs.toString() || "0", icon: Dog, color: "bg-amber-500", link: "/animals/dogs" },
-    { title: t('cats'), value: stats?.cats.toString() || "0", icon: Cat, color: "bg-green-500", link: "/animals/cats" },
-    { title: t('birds'), value: stats?.birds.toString() || "0", icon: Bird, color: "bg-purple-500", link: "/animals/birds" },
+    { title: t('totalPatients'), value: stats?.totalPatients.toString() || "—", icon: Activity, color: "bg-blue-500", link: "/animals/search" },
+    { title: t('dogs'), value: stats?.dogs.toString() || "—", icon: Dog, color: "bg-amber-500", link: "/animals/dogs" },
+    { title: t('cats'), value: stats?.cats.toString() || "—", icon: Cat, color: "bg-green-500", link: "/animals/cats" },
+    { title: t('birds'), value: stats?.birds.toString() || "—", icon: Bird, color: "bg-purple-500", link: "/animals/birds" },
   ];
   
   const actionCards = [
@@ -71,12 +49,8 @@ const Dashboard = () => {
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((card, index) => (
-          <motion.div
+          <div
             key={card.title}
-            variants={cardVariants}
-            initial="initial"
-            animate="animate"
-            custom={index}
           >
             <Link to={card.link}>
               <Card className="transition-all duration-200 hover:shadow-md hover:-translate-y-1">
@@ -93,7 +67,7 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             </Link>
-          </motion.div>
+          </div>
         ))}
       </div>
       
@@ -102,12 +76,8 @@ const Dashboard = () => {
         <h2 className="text-xl font-semibold mb-4">{t('quickActions')}</h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {actionCards.map((card, index) => (
-            <motion.div
+            <div
               key={card.title}
-              variants={cardVariants}
-              initial="initial"
-              animate="animate"
-              custom={index + 4}
             >
               <Link to={card.link}>
                 <Card className="transition-all duration-200 hover:shadow-md hover:-translate-y-1 h-full">
@@ -120,7 +90,7 @@ const Dashboard = () => {
                   </CardContent>
                 </Card>
               </Link>
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>
@@ -136,12 +106,8 @@ const Dashboard = () => {
             <div className="space-y-2">
               {stats?.recentPatients.length ? (
                 stats.recentPatients.map((patient, index) => (
-                  <motion.div
+                  <div
                     key={patient.id}
-                    variants={cardVariants}
-                    initial="initial"
-                    animate="animate"
-                    custom={index + 8}
                   >
                     <Link to={`/animals/${patient.id}`}>
                       <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
@@ -165,9 +131,9 @@ const Dashboard = () => {
                         </span>
                       </div>
                     </Link>
-                  </motion.div>
+                  </div>
                 ))
-              ) : (
+              ) : !stats ? null : (
                 <div className="text-center py-6 text-muted-foreground">
                   <p>{t('noRecentPatients')}</p>
                 </div>

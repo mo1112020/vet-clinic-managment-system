@@ -1,5 +1,5 @@
 
-import React, { createContext, useState, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useCallback, useMemo } from 'react';
 import { allTranslations } from '@/translations/merge-translations';
 import type { Language } from '@/translations/merge-translations';
 
@@ -14,15 +14,16 @@ const LanguageContext = createContext<LanguageContextType | null>(null);
 export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [language, setLanguage] = useState<Language>('en');
 
-  const t = (key: string): string => {
+  const t = useCallback((key: string): string => {
     if (allTranslations[key] && allTranslations[key][language]) {
       return allTranslations[key][language];
     }
-    return key; 
-  };
+    return key;
+  }, [language]);
+  const value = useMemo(() => ({ language, setLanguage, t }), [language, t]);
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider value={value}>
       {children}
     </LanguageContext.Provider>
   );

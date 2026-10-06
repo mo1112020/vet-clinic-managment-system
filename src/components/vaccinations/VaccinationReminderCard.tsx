@@ -1,31 +1,20 @@
 import { format } from 'date-fns';
 import { MessageCircle, Loader2, Check } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { Button } from "@/components/ui/button";
 import { VaccinationStatusBadge } from './VaccinationStatusBadge';
 import { VaccinationAnimalIcon } from './VaccinationAnimalIcon';
 import { AnimalType } from '@/types/database.types';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-export interface VaccinationReminderItem {
-  id: number;
-  animalName: string;
-  animalType: AnimalType;
-  ownerName: string;
-  ownerPhone: string;
-  vaccineName: string;
-  date: string;
-  nextDue: string;
-  status: 'today' | 'upcoming' | 'overdue';
-  completed?: boolean;
-}
+import { VaccinationReminderItem } from '@/services/vaccinations/get-vaccinations';
+export type { VaccinationReminderItem } from '@/services/vaccinations/get-vaccinations';
 
 interface VaccinationReminderCardProps {
   reminder: VaccinationReminderItem;
   index: number;
   isSending: boolean;
-  onSendReminder: (id: number) => void;
-  onMarkCompleted?: (id: number) => Promise<void>;
+  onSendReminder: (id: string) => void;
+  onMarkCompleted?: (id: string) => Promise<void>;
   isCompletingVaccination?: boolean;
 }
 
@@ -38,17 +27,6 @@ export const VaccinationReminderCard = ({
   isCompletingVaccination = false
 }: VaccinationReminderCardProps) => {
   const { t, language } = useLanguage();
-  const cardVariants = {
-    initial: { opacity: 0, y: 20 },
-    animate: (index: number) => ({
-      opacity: 1,
-      y: 0,
-      transition: {
-        delay: index * 0.05,
-        duration: 0.3,
-      },
-    }),
-  };
 
   const handleSendReminder = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -63,11 +41,7 @@ export const VaccinationReminderCard = ({
   };
 
   return (
-    <motion.div
-      variants={cardVariants}
-      initial="initial"
-      animate="animate"
-      custom={index}
+    <div
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border rounded-lg hover:bg-muted/30 transition-colors">
         <div className="flex items-center gap-3">
@@ -135,6 +109,6 @@ export const VaccinationReminderCard = ({
           </Button>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };

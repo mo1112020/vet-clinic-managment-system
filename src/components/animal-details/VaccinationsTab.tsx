@@ -1,13 +1,15 @@
+import { useQueryClient } from '@tanstack/react-query';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { motion } from 'framer-motion';
-import { format, isPast, isToday, addDays, isAfter } from 'date-fns';
+import { ListPagination } from '@/components/ui/list-pagination';
+import { useListPagination } from '@/hooks/use-list-pagination';
+import { format, isPast, isToday } from 'date-fns';
 import { Vaccination } from '@/types/database.types';
 import { ScheduleVaccinationDialog } from './ScheduleVaccinationDialog';
 import { Button } from '@/components/ui/button';
-import { Check, X, Clock } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -15,7 +17,7 @@ interface VaccinationsTabProps {
   vaccinations: Vaccination[];
   animalId: string;
   animalName: string;
-  onVaccinationScheduled?: () => void;
+  onVaccinationScheduled?: () => void | Promise<void>;
 }
 
 const VaccinationsTab: React.FC<VaccinationsTabProps> = ({ 
@@ -25,6 +27,12 @@ const VaccinationsTab: React.FC<VaccinationsTabProps> = ({
   onVaccinationScheduled 
 }) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [completingId, setCompletingId] = useState<string | null>(null);
+  const [completedIds, setCompletedIds] = useState<string[]>([]);
+  const pendingVaccinations = vaccinations.filter(
+    vaccination => !vaccination.completed && vaccination.status !== 'completed' && !completedIds.includes(vaccination.id)
+  );
   
   // this function to determine vaccination status (completed, overdue, upcoming, today)
   // it checks the vaccination status and next due date to return appropriate status
@@ -41,18 +49,24 @@ const VaccinationsTab: React.FC<VaccinationsTabProps> = ({
   // this one Function is to mark vaccination as completed
   const markVaccinationAsCompleted = async (e: React.MouseEvent, vaccination: Vaccination) => {
     e.preventDefault();
+    if (completingId) return;
+    setCompletingId(vaccination.id);
     
     try {
       const { error } = await supabase
         .from('vaccinations')
         .update({ completed: true })
-        .eq('id', vaccination.id);
+        .eq('id', vaccination.id)
+        .select('id')
+        .single();
         
       if (error) throw error;
+      setCompletedIds(ids => [...ids, vaccination.id]);
+      await queryClient.invalidateQueries({ queryKey: ['vaccinations'] });
       
       toast({
         title: "Vaccination completed",
-        description: `${vaccination.name} has been marked as administered.`,
+        description: `${vaccination.name} is now in Medical History under Completed Vaccinations.`,
       });
       
       // if onVaccinationScheduled callback is provided, call it to refresh the data or update UI
@@ -60,7 +74,7 @@ const VaccinationsTab: React.FC<VaccinationsTabProps> = ({
       // it can be used to refetch data or update the state in the parent component
       
       if (onVaccinationScheduled) {
-        onVaccinationScheduled();
+        await onVaccinationScheduled();
       }
       
     } catch (err) {
@@ -70,8 +84,12 @@ const VaccinationsTab: React.FC<VaccinationsTabProps> = ({
         description: "Failed to update vaccination status.",
         variant: "destructive",
       });
+    } finally {
+      setCompletingId(null);
     }
   };
+
+  const pagination = useListPagination(pendingVaccinations);
 
   return (
     <Card>
@@ -87,35 +105,30 @@ const VaccinationsTab: React.FC<VaccinationsTabProps> = ({
         />
       </CardHeader>
       <CardContent>
-        {vaccinations.length === 0 ? (
+        {pendingVaccinations.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">No vaccination records found for this animal.</p>
+            <p className="text-muted-foreground">No pending vaccinations. Completed vaccinations are available in Medical History.</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {vaccinations.map((vax) => (
-              <motion.div
+            {pagination.items.map((vax) => (
+              <div
                 key={vax.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
                 className="flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-lg hover:bg-muted/30 transition-colors"
               >
                 <div className="flex flex-col md:flex-row md:items-center gap-3 mb-3 md:mb-0">
                   <div>
                     <Badge 
-                      variant={vax.completed ? 'secondary' : 'default'} 
+                      variant={getVaccinationStatus(vax) === 'overdue' ? 'destructive' : 'default'}
                       className="mb-2 md:mb-0"
                     >
-                      {vax.completed ? 'Completed' : 'Upcoming'}
+                      {getVaccinationStatus(vax) === 'today' ? 'Due Today' : getVaccinationStatus(vax) === 'overdue' ? 'Overdue' : 'Upcoming'}
                     </Badge>
                   </div>
                   <div>
                     <p className="font-medium">{vax.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      {vax.completed 
-                        ? `Administered on ${format(new Date(vax.date), 'MMMM d, yyyy')}` 
-                        : `Scheduled for ${format(new Date(vax.next_due), 'MMMM d, yyyy')}`}
+                      Scheduled for {format(new Date(vax.next_due), 'MMMM d, yyyy')}
                     </p>
                   </div>
                 </div>
@@ -129,16 +142,18 @@ const VaccinationsTab: React.FC<VaccinationsTabProps> = ({
                       variant="outline"
                       className="flex items-center gap-2"
                       onClick={(e) => markVaccinationAsCompleted(e, vax)}
+                      disabled={completingId !== null}
                     >
                       <Check className="h-4 w-4" />
-                      Mark Completed
+                      {completingId === vax.id ? 'Saving...' : 'Mark Completed'}
                     </Button>
                   )}
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         )}
+        <ListPagination {...pagination} />
       </CardContent>
     </Card>
   );

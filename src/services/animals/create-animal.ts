@@ -42,8 +42,8 @@ export async function createAnimal(data: AnimalFormData): Promise<Animal> {
         prone_diseases: proneDiseasesArray,
         owner_id: ownerId,
         created_at: new Date().toISOString(),
-        age_years: data.ageYears || null,
-        age_months: data.ageMonths || null,
+        age_years: data.ageYears ?? null,
+        age_months: data.ageMonths ?? null,
       })
       .select()
       .single();
@@ -61,7 +61,6 @@ export async function createAnimal(data: AnimalFormData): Promise<Animal> {
       throw new Error(`Error creating animal: ${animalError.message}`);
     }
 
-    console.log('Animal created successfully:', animalData);
     
     // Transform the result to match the Animal type expected by the application
     const animal: Animal = {
@@ -71,8 +70,8 @@ export async function createAnimal(data: AnimalFormData): Promise<Animal> {
       customAnimalType: animalData.custom_animal_type || undefined,
       breed: animalData.breed || '',
       chipNo: animalData.chip_number || undefined,
-      ageYears: animalData.age_years || undefined,
-      ageMonths: animalData.age_months || undefined,
+      ageYears: animalData.age_years ?? undefined,
+      ageMonths: animalData.age_months ?? undefined,
       healthNotes: animalData.prone_diseases ? animalData.prone_diseases.join(', ') : undefined,
       owner_id: animalData.owner_id,
       created_at: animalData.created_at,

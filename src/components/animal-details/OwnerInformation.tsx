@@ -1,3 +1,4 @@
+import { Owner } from '@/types/database.types';
 
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -5,7 +6,7 @@ import { motion } from 'framer-motion';
 import { Phone, Mail } from 'lucide-react';
 
 interface OwnerInformationProps {
-  owner: any;
+  owner: Owner | null;
 }
 
 const OwnerInformation: React.FC<OwnerInformationProps> = ({ owner }) => {

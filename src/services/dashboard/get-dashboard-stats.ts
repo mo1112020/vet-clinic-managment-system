@@ -19,50 +19,19 @@ export interface RecentPatient {
 
 export async function getDashboardStats(): Promise<DashboardStats> {
   try {
-    // Get total counts by animal type
-    const { data: countData, error: countError } = await supabase
-      .from('animals')
-      .select('animal_type', { count: 'exact', head: false })
-      .eq('animal_type', 'dog');
-
-    if (countError) throw countError;
-    
-    const { data: catCount, error: catError } = await supabase
-      .from('animals')
-      .select('animal_type', { count: 'exact', head: false })
-      .eq('animal_type', 'cat');
-      
-    if (catError) throw catError;
-    
-    const { data: birdCount, error: birdError } = await supabase
-      .from('animals')
-      .select('animal_type', { count: 'exact', head: false })
-      .eq('animal_type', 'bird');
-      
-    if (birdError) throw birdError;
-    
-    const { count: totalCount, error: totalError } = await supabase
-      .from('animals')
-      .select('*', { count: 'exact', head: true });
-      
-    if (totalError) throw totalError;
-
-    // Get recent patients
-    const { data: recentData, error: recentError } = await supabase
-      .from('animals')
-      .select(`
-        id,
-        name,
-        animal_type,
-        created_at,
-        owners:owner_id (
-          full_name
-        )
-      `)
-      .order('created_at', { ascending: false })
-      .limit(4);
-
-    if (recentError) throw recentError;
+    // Count on the server and run independent requests concurrently.
+    const [dogs, cats, birds, total, recent] = await Promise.all([
+      supabase.from('animals').select('id', { count: 'exact', head: true }).eq('animal_type', 'dog'),
+      supabase.from('animals').select('id', { count: 'exact', head: true }).eq('animal_type', 'cat'),
+      supabase.from('animals').select('id', { count: 'exact', head: true }).eq('animal_type', 'bird'),
+      supabase.from('animals').select('id', { count: 'exact', head: true }),
+      supabase.from('animals').select('id, name, animal_type, created_at, owners:owner_id(full_name)')
+        .order('created_at', { ascending: false }).limit(4),
+    ]);
+    for (const result of [dogs, cats, birds, total, recent]) {
+      if (result.error) throw result.error;
+    }
+    const recentData = recent.data;
 
     // Transform the data for the dashboard
     const recentPatients: RecentPatient[] = recentData.map(animal => ({
@@ -74,10 +43,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     }));
 
     return {
-      totalPatients: totalCount || 0,
-      dogs: countData.length || 0,
-      cats: catCount.length || 0,
-      birds: birdCount.length || 0,
+      totalPatients: total.count ?? 0,
+      dogs: dogs.count ?? 0,
+      cats: cats.count ?? 0,
+      birds: birds.count ?? 0,
       recentPatients,
     };
   } catch (error) {

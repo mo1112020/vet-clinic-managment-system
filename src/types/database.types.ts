@@ -12,7 +12,6 @@ export interface Animal {
   healthNotes?: string;
   owner_id: string;
   owner?: Owner;
-  owners?: any; 
   created_at: string;
   last_visit?: string;
   next_appointment?: string;

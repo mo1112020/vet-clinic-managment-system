@@ -16,7 +16,7 @@ export const updateMedicalRecord = async (
     const updatePayload: { notes: string; description?: string } = { notes };
     
     // Only add description if it's provided
-    if (description) {
+    if (description !== undefined) {
       updatePayload.description = description;
     }
     
@@ -24,7 +24,7 @@ export const updateMedicalRecord = async (
       .from('medical_records')
       .update(updatePayload)
       .eq('id', recordId)
-      .select();
+      .select().single();
 
     if (error) throw error;
 

@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -13,12 +14,12 @@ import OwnerInformation from '@/components/animal-details/OwnerInformation';
 import VaccinationsTab from '@/components/animal-details/VaccinationsTab';
 import MedicalHistoryTab from '@/components/animal-details/MedicalHistoryTab';
 import DocumentsTab from '@/components/animal-details/DocumentsTab';
-import LoadingState from '@/components/animal-details/LoadingState';
 import ErrorState from '@/components/animal-details/ErrorState';
 
 const AnimalDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -31,6 +32,12 @@ const AnimalDetails = () => {
     setDeleting(true);
     try {
       await deleteAnimal(id);
+      queryClient.removeQueries({ queryKey: ['animal-details', id] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['animals'] }),
+        queryClient.invalidateQueries({ queryKey: ['dashboardStats'] }),
+        queryClient.invalidateQueries({ queryKey: ['vaccinations'] }),
+      ]);
       
       toast({
         title: 'Animal deleted',
@@ -52,11 +59,11 @@ const AnimalDetails = () => {
   };
 
   const handleVaccinationScheduled = () => {
-    refetch();
+    return refetch();
   };
 
-  if (isLoading) {
-    return <LoadingState />;
+  if (isLoading && !animal) {
+    return <div className="space-y-6" aria-busy="true" />;
   }
   
   if (error || !animal) {
@@ -97,6 +104,7 @@ const AnimalDetails = () => {
         <TabsContent value="medical" className="mt-6">
           <MedicalHistoryTab 
             medicalHistory={medicalHistory} 
+            vaccinations={vaccinations}
             animalId={id!}
             refetch={refetch}
           />

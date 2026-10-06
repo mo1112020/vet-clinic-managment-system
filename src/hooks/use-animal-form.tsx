@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -11,6 +12,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 export function useAnimalForm(animalId?: string) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
@@ -24,14 +26,16 @@ export function useAnimalForm(animalId?: string) {
   });
   
   useEffect(() => {
+    const controller = new AbortController();
     if (!isNewAnimal) {
       const fetchAnimal = async () => {
         setIsLoading(true);
         try {
-          const animal = await getAnimalById(animalId!);
+          const animal = await getAnimalById(animalId!, controller.signal);
           
+          if (controller.signal.aborted) return;
           // Handle phone number with country code
-          let phoneNumber = animal.owner.phone_number || '';
+          let phoneNumber = animal.owner?.phone_number || '';
           let countryCode = '+90'; // Default for Turkey because the app is primarily for Turkey
           
           // Try to extract country code if present
@@ -61,13 +65,14 @@ export function useAnimalForm(animalId?: string) {
             chipNumber: animal.chip_number || '',
             ageYears: ageYears,
             ageMonths: ageMonths,
-            ownerName: animal.owner.full_name,
-            ownerId: animal.owner.id_number,
+            ownerName: animal.owner?.full_name || '',
+            ownerId: animal.owner?.id_number || '',
             ownerPhoneCountryCode: countryCode,
             ownerPhone: phoneNumber,
             healthNotes: animal.prone_diseases ? animal.prone_diseases.join(', ') : '',
           });
         } catch (error) {
+          if (controller.signal.aborted) return;
           console.error('Error fetching animal:', error);
           toast({
             title: t('error'),
@@ -75,12 +80,13 @@ export function useAnimalForm(animalId?: string) {
             variant: 'destructive',
           });
         } finally {
-          setIsLoading(false);
+          if (!controller.signal.aborted) setIsLoading(false);
         }
       };
       
       fetchAnimal();
     }
+    return () => controller.abort();
   }, [animalId, isNewAnimal, form, toast, t]);
   
   const onSubmit = async (data: AnimalFormValues) => {
@@ -105,17 +111,16 @@ export function useAnimalForm(animalId?: string) {
         healthNotes: data.healthNotes,
       };
       
-      let result;
       
       if (isNewAnimal) {
-        result = await createAnimal(animalData);
+        await createAnimal(animalData);
         
         toast({
           title: t('success'),
           description: t('animalCreatedSuccessfully'),
         });
       } else {
-        result = await updateAnimal(animalId!, animalData);
+        await updateAnimal(animalId!, animalData);
         
         toast({
           title: t('success'),
@@ -123,6 +128,12 @@ export function useAnimalForm(animalId?: string) {
         });
       }
       
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['animals'] }),
+        queryClient.invalidateQueries({ queryKey: ['animal-details'] }),
+        queryClient.invalidateQueries({ queryKey: ['dashboardStats'] }),
+        queryClient.invalidateQueries({ queryKey: ['vaccinations'] }),
+      ]);
       // Navigate only after successful submission
       navigate('/animals/search');
     } catch (error) {

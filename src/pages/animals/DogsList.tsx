@@ -4,9 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Dog, Calendar, File, Clipboard, Phone, Loader2 } from 'lucide-react';
+import { Search, Dog, Calendar, File, Clipboard, Phone, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { ListPagination } from '@/components/ui/list-pagination';
 import { useAnimals } from '@/hooks/use-animals';
 import { format } from 'date-fns';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -17,20 +17,10 @@ const DogsList = () => {
   const { t } = useLanguage();
   
   // Use the custom hook to fetch dogs data from Supabase
-  const { animals: dogs, isLoading, error } = useAnimals('dog', queryToSearch);
+  const { animals: dogs, isLoading, hasData, error, total, page, pageSize, setPage, refetch } = useAnimals('dog', queryToSearch, 'registry');
   
   const handleSearch = () => {
     setQueryToSearch(searchQuery);
-  };
-
-  const listVariants = {
-    initial: { opacity: 0 },
-    animate: { opacity: 1, transition: { staggerChildren: 0.05 } },
-  };
-  
-  const itemVariants = {
-    initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0, transition: { duration: 0.3 } },
   };
 
   return (
@@ -57,6 +47,9 @@ const DogsList = () => {
               <Search className="h-4 w-4 mr-2" />
               {t('search')}
             </Button>
+            <Button variant="outline" onClick={() => refetch()} disabled={isLoading}>
+              <RefreshCw className="h-4 w-4 mr-2" />{t('refresh')}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -71,16 +64,11 @@ const DogsList = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="text-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary" />
-              <p className="text-muted-foreground">{t('loadingDogs')}</p>
-            </div>
-          ) : error ? (
+          {error ? (
             <div className="text-center py-12 text-destructive">
               <p>{t('errorDogs')} {error}</p>
             </div>
-          ) : dogs.length === 0 ? (
+          ) : !hasData ? null : dogs.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">{t('noDogs')}</p>
             </div>
@@ -142,6 +130,7 @@ const DogsList = () => {
               </Table>
             </div>
           )}
+          <ListPagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} disabled={isLoading} />
         </CardContent>
       </Card>
     </div>

@@ -1,3 +1,4 @@
+import { Tables } from '@/integrations/supabase/types';
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -21,7 +22,7 @@ type NewInventoryItem = {
 type AddInventoryItemDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onItemAdded?: (item: any) => void;
+  onItemAdded?: (item: Tables<'inventory'>) => void;
 }
 
 export function AddInventoryItemDialog({ open, onOpenChange, onItemAdded }: AddInventoryItemDialogProps) {

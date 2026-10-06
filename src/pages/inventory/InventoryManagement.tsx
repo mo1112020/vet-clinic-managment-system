@@ -1,3 +1,6 @@
+import { Tables } from '@/integrations/supabase/types';
+import { ListPagination } from '@/components/ui/list-pagination';
+import { useListPagination } from '@/hooks/use-list-pagination';
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -37,6 +40,8 @@ const InventoryManagement = () => {
     sortDirection
   );
   
+  const pagination = useListPagination(inventoryItems, JSON.stringify([searchQuery, categoryFilter, stockFilter, sortBy, sortDirection]));
+
   const toggleSort = (field: string) => {
     if (sortBy === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -51,11 +56,11 @@ const InventoryManagement = () => {
     setEditItemDialogOpen(true);
   };
 
-  const handleItemAdded = (newItem: any) => {
+  const handleItemAdded = (newItem: Tables<'inventory'>) => {
     addItem(newItem);
   };
 
-  const handleItemUpdated = (updatedItem: any) => {
+  const handleItemUpdated = (updatedItem: Tables<'inventory'>) => {
     updateItem(updatedItem);
   };
 
@@ -100,7 +105,7 @@ const InventoryManagement = () => {
             />
             
             <InventoryTable
-              inventoryItems={inventoryItems}
+              inventoryItems={pagination.items}
               isLoading={isLoading}
               error={error}
               sortBy={sortBy}
@@ -111,14 +116,7 @@ const InventoryManagement = () => {
           </div>
         </CardContent>
         
-        <CardFooter className="flex justify-between">
-          <div className="text-sm text-muted-foreground">
-            {isLoading ? 
-              t('loadingItems') : 
-              `${t('showing')} ${inventoryItems.length} ${inventoryItems.length === 1 ? t('item') : t('items')}`
-            }
-          </div>
-        </CardFooter>
+        <CardFooter className="block"><ListPagination {...pagination} /></CardFooter>
       </Card>
       
       {/* Edit Item Dialog */}

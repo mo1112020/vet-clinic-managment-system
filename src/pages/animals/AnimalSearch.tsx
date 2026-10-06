@@ -4,9 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Dog, Cat, Bird, Clipboard, Phone, Loader2 } from 'lucide-react';
+import { Search, Dog, Cat, Bird, Clipboard, Phone } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { ListPagination } from '@/components/ui/list-pagination';
 import { useAnimals } from '@/hooks/use-animals';
 import { AnimalType } from '@/types/database.types';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -14,7 +14,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 const AnimalSearch = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchBy, setSearchBy] = useState('name');
-  const { animals, isLoading, error } = useAnimals(undefined, searchQuery, searchBy);
+  const { animals, isLoading, hasData, error, total, page, pageSize, setPage } = useAnimals(undefined, searchQuery, searchBy);
   const { t } = useLanguage();
   
   const handleSearch = () => {
@@ -32,16 +32,6 @@ const AnimalSearch = () => {
       default:
         return null;
     }
-  };
-
-  const listVariants = {
-    initial: { opacity: 0 },
-    animate: { opacity: 1, transition: { staggerChildren: 0.05 } },
-  };
-  
-  const itemVariants = {
-    initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0, transition: { duration: 0.3 } },
   };
 
   return (
@@ -85,36 +75,25 @@ const AnimalSearch = () => {
         <CardHeader>
           <CardTitle>{t('searchResults')}</CardTitle>
           <CardDescription>
-            {t('found')} {animals.length} {animals.length === 1 ? t('result') : t('results')}
+            {t('found')} {total} {total === 1 ? t('result') : t('results')}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center items-center h-[200px]">
-              <div className="text-center">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary" />
-                <p className="text-muted-foreground">{t('loadingAnimals')}</p>
-              </div>
-            </div>
-          ) : error ? (
+          {error ? (
             <div className="text-center py-12 text-destructive">
               <p>{error}</p>
             </div>
-          ) : animals.length === 0 ? (
+          ) : !hasData ? null : animals.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">{t('noResultsFound')}</p>
             </div>
           ) : (
-            <motion.div 
+            <div
               className="space-y-3"
-              variants={listVariants}
-              initial="initial"
-              animate="animate"
             >
               {animals.map((animal) => (
-                <motion.div 
+                <div
                   key={animal.id}
-                  variants={itemVariants}
                 >
                   <Link to={`/animals/${animal.id}`}>
                     <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/30 hover:border-primary/30 transition-all duration-200">
@@ -146,10 +125,11 @@ const AnimalSearch = () => {
                       </div>
                     </div>
                   </Link>
-                </motion.div>
+                </div>
               ))}
-            </motion.div>
+            </div>
           )}
+          <ListPagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} disabled={isLoading} />
         </CardContent>
       </Card>
     </div>

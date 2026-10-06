@@ -4,11 +4,11 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Download, File, Loader2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { ListPagination } from '@/components/ui/list-pagination';
+import { useListPagination } from '@/hooks/use-list-pagination';
 import { format } from 'date-fns';
 import { Document } from '@/types/database.types';
 import { useToast } from '@/hooks/use-toast';
-import { generateAnimalRecordPdf } from '@/services/documents/generate-pdf';
 import { useAnimalDetails } from '@/hooks/use-animal-details';
 
 interface DocumentsTabProps {
@@ -38,6 +38,7 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ documents, animalId }) => {
         description: 'Please wait while we prepare the patient record...',
       });
       
+      const { generateAnimalRecordPdf } = await import('@/services/documents/generate-pdf');
       const pdfDataUrl = await generateAnimalRecordPdf({
         animal,
         owner,
@@ -58,11 +59,11 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ documents, animalId }) => {
         title: 'PDF Generated',
         description: 'Patient record PDF has been downloaded.',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error generating PDF:', error);
       toast({
         title: 'Error',
-        description: 'Failed to generate PDF: ' + (error.message || 'Please try again.'),
+        description: 'Failed to generate PDF: ' + (error instanceof Error ? error.message : 'Please try again.'),
         variant: 'destructive',
       });
     } finally {
@@ -70,6 +71,8 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ documents, animalId }) => {
     }
   };
   
+  const pagination = useListPagination(documents);
+
   return (
     <Card>
       <CardHeader>
@@ -104,12 +107,9 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ documents, animalId }) => {
           </div>
         ) : (
           <div className="space-y-4">
-            {documents.map((doc) => (
-              <motion.div
+            {pagination.items.map((doc) => (
+              <div
                 key={doc.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
                 className="flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-lg hover:bg-muted/30 transition-colors"
               >
                 <div className="flex items-center gap-3 mb-3 md:mb-0">
@@ -126,10 +126,11 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ documents, animalId }) => {
                     </div>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         )}
+        <ListPagination {...pagination} />
       </CardContent>
     </Card>
   );

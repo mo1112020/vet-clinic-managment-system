@@ -3,9 +3,11 @@ import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Edit2, X, Save } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { ListPagination } from '@/components/ui/list-pagination';
+import { useListPagination } from '@/hooks/use-list-pagination';
 import { format } from 'date-fns';
-import { MedicalRecord } from '@/types/database.types';
+import { MedicalRecord, Vaccination } from '@/types/database.types';
+import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -13,11 +15,15 @@ import { updateMedicalRecord } from '@/services/medical-records/update-medical-r
 
 interface MedicalHistoryTabProps {
   medicalHistory: MedicalRecord[];
+  vaccinations?: Vaccination[];
   animalId?: string;
   refetch?: () => void;
 }
 
-const MedicalHistoryTab: React.FC<MedicalHistoryTabProps> = ({ medicalHistory, animalId, refetch }) => {
+const MedicalHistoryTab: React.FC<MedicalHistoryTabProps> = ({ medicalHistory, vaccinations = [], animalId, refetch }) => {
+  const completedVaccinations = vaccinations
+    .filter(vaccination => vaccination.completed || vaccination.status === 'completed')
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editedNotes, setEditedNotes] = useState('');
   const [editedDescription, setEditedDescription] = useState('');
@@ -78,25 +84,42 @@ const MedicalHistoryTab: React.FC<MedicalHistoryTabProps> = ({ medicalHistory, a
     }
   };
 
+  const vaccinationPages = useListPagination(completedVaccinations);
+  const historyPages = useListPagination(medicalHistory);
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Medical History</CardTitle>
-        <CardDescription>Past conditions, treatments, and visits</CardDescription>
+        <CardDescription>Past conditions, treatments, visits, and completed vaccinations</CardDescription>
       </CardHeader>
       <CardContent>
-        {medicalHistory.length === 0 ? (
+        {completedVaccinations.length > 0 && (
+          <section className="space-y-4 mb-6" aria-labelledby="completed-vaccinations-heading">
+            <h3 id="completed-vaccinations-heading" className="font-semibold">Completed Vaccinations</h3>
+            {vaccinationPages.items.map(vaccination => (
+              <div key={vaccination.id} className="p-4 border rounded-lg hover:bg-muted/30 transition-colors">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                  <p className="font-medium">{vaccination.name}</p>
+                  <Badge variant="secondary" className="w-fit">Completed</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Scheduled for {format(new Date(vaccination.date), 'MMMM d, yyyy')}
+                </p>
+              </div>
+            ))}
+            <ListPagination {...vaccinationPages} />
+          </section>
+        )}
+        {medicalHistory.length === 0 && completedVaccinations.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">No medical history found for this animal.</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {medicalHistory.map((entry, index) => (
-              <motion.div
+            {historyPages.items.map((entry) => (
+              <div
                 key={entry.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
                 className="p-4 border rounded-lg hover:bg-muted/30 transition-colors"
               >
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-2">
@@ -157,10 +180,11 @@ const MedicalHistoryTab: React.FC<MedicalHistoryTabProps> = ({ medicalHistory, a
                 ) : (
                   <p className="text-sm">{entry.notes}</p>
                 )}
-              </motion.div>
+              </div>
             ))}
           </div>
         )}
+        <ListPagination {...historyPages} />
       </CardContent>
     </Card>
   );
