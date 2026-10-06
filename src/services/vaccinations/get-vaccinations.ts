@@ -26,6 +26,7 @@ export async function getVaccinations(filter: VaccinationFilter, signal?: AbortS
   else if (filter === 'upcoming') query = query.gt('scheduled_date', today).lt('scheduled_date', format(addDays(new Date(), 7), 'yyyy-MM-dd'));
   else if (filter === 'overdue') query = query.lt('scheduled_date', today);
   if (filter !== 'all') query = query.eq('completed', filter === 'completed');
+  query = query.order('scheduled_date', { ascending: true }).order('id', { ascending: true });
   if (signal) query = query.abortSignal(signal);
   const { data, error } = await query;
   if (error) throw error;
